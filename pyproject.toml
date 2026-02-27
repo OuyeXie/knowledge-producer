@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowledge-producer"
+version = "0.1.0"
+description = "Fetch recent AI research papers from arXiv, categorize them, and generate Markdown reports."
+requires-python = ">=3.10"
+dependencies = [
+    "arxiv>=2.1.0",
+]
+
+[project.scripts]
+knowledge-producer = "knowledge_producer.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
