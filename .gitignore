@@ -6,4 +6,4 @@ dist/
 build/
 .venv/
 .idea/
-reports/*.md
+.env

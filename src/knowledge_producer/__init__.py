@@ -9,8 +9,9 @@ class Paper:
     title: str
     abstract: str
     authors: list[str]
-    arxiv_url: str
-    pdf_url: str | None
+    url: str
+    source: str
     published: datetime
-    arxiv_categories: list[str]
+    pdf_url: str | None = None
+    source_categories: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)

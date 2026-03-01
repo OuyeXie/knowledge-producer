@@ -9,7 +9,9 @@
       "Bash(pip3 show:*)",
       "Bash(pip install:*)",
       "Bash(python3:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(ls:*)",
+      "Bash(export:*)"
     ]
   }
 }

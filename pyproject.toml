@@ -5,11 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "knowledge-producer"
 version = "0.1.0"
-description = "Fetch recent AI research papers from arXiv, categorize them, and generate Markdown reports."
+description = "Fetch recent AI research from multiple sources, categorize, and generate Markdown reports."
 requires-python = ">=3.10"
 dependencies = [
     "arxiv>=2.1.0",
+    "feedparser>=6.0",
+    "beautifulsoup4>=4.12",
+    "requests>=2.31",
 ]
+
+[project.optional-dependencies]
+llm = ["openai>=1.0", "anthropic>=0.30"]
 
 [project.scripts]
 knowledge-producer = "knowledge_producer.main:main"
