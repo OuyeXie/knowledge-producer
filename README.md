@@ -74,7 +74,7 @@ The report highlights papers matching **focus topics** at the top, before the fu
 | `--no-focus` | No | No |
 | *(no API key set)* | Yes | No (automatic fallback) |
 
-## Setup
+## Quick Setup
 
 ```bash
 python3 -m venv .venv
@@ -82,20 +82,34 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-For LLM-powered focus summaries (install once, add either or both keys):
+Run the CLI:
+
+```bash
+python -m knowledge_producer --help
+```
+
+For LLM-powered focus summaries, install the optional dependencies:
 ```bash
 pip install -e ".[llm]"
 ```
 
-Create a `.env` file with your API key(s):
+Then add either or both API keys to `.env`:
 ```
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
 ```
 
-Optional (for X/Twitter support):
+Optional, for X/Twitter support:
 ```bash
 pip install snscrape
+```
+
+## OpenClaw Setup
+
+To expose this repo's `ai-report` skill to OpenClaw, create a symlink into the OpenClaw workspace skills directory:
+
+```bash
+ln -s /Users/ouye/workspace/knowledge-producer/skills/ai_report /Users/ouye/.openclaw/workspace/skills/ai_report
 ```
 
 ## Usage
