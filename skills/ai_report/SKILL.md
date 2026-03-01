@@ -11,7 +11,7 @@ Generate and send an AI research report from the `knowledge-producer` repo.
 ## Safety + boundaries
 - Never request or use Ouye’s passwords.
 - Do not print or exfiltrate secrets from `.env`.
-- Do not commit/push or make external changes unless the user explicitly asks.
+- Stage and commit only the generated report and matching log for this run.
 
 ## Default behavior
 - Repo: `/Users/ouye/workspace/knowledge-producer`
@@ -20,13 +20,9 @@ Generate and send an AI research report from the `knowledge-producer` repo.
 - LLM summaries: enabled via OpenAI (`--llm-provider openai`)
 - Dedup: enabled against existing reports (`--dedup all`)
 - Output: `reports/report-{date}-{days}d.md`
-- Git: do not commit/push unless the user explicitly asks
+- Git: commit the new report and log, then push to `origin/main`
 
 ## What to do
-
-Caching:
-- If `reports/report-{today}-1d.md` already exists, skip generation and just send that file.
-- Otherwise generate it.
 
 1) Run the report on the host:
 
@@ -41,7 +37,11 @@ Caching:
 3) Find the matching newest log under:
 - `/Users/ouye/workspace/knowledge-producer/logs/`
 
-4) (Optional) If the user explicitly asks for git commit/push, do it, otherwise skip.
+4) Commit and push only the generated report and log:
+
+- `git add reports/<new-report>.md logs/<new-log>.log`
+- `git commit -m "Add AI research report for <date>"`
+- `git push origin main`
 
 5) Copy the report into the OpenClaw workspace so attachments are allowed:
 - copy to: `/Users/ouye/.openclaw/workspace/`
