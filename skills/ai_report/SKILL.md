@@ -17,7 +17,7 @@ Generate and send an AI research report from the `knowledge-producer` repo.
 - Repo: `/Users/ouye/workspace/knowledge-producer`
 - Days: `1`
 - Sources: all
-- LLM summaries: disabled by default (`--no-llm`) unless user explicitly asks
+- LLM summaries: enabled via OpenAI (`--llm-provider openai`)
 - Dedup: enabled against existing reports (`--dedup all`)
 - Output: `reports/report-{date}-{days}d.md`
 - Git: do not commit/push unless the user explicitly asks
@@ -33,7 +33,7 @@ Caching:
 - `cd /Users/ouye/workspace/knowledge-producer`
 - `source .venv/bin/activate`
 - `python -m pip install -e .`
-- `python -m knowledge_producer --days 1 --dedup all --no-llm`
+- `python -m knowledge_producer --days 1 --dedup all --llm-provider openai`
 
 2) Find the newest report under:
 - `/Users/ouye/workspace/knowledge-producer/reports/`
@@ -51,5 +51,5 @@ Caching:
 ## Options (if user provides)
 - If user asks for a different range: pass `--days N` or `--date YYYY-MM-DD`.
 - If user asks to disable LLM summaries: pass `--no-llm`.
-- If user wants a different provider and they have a key configured: set `--llm-provider`.
+- If user wants a different provider and they have a key configured: set `--llm-provider anthropic`.
 - If there are unrelated git changes, do not include them in the commit.
