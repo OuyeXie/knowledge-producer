@@ -7,7 +7,27 @@ import arxiv
 from knowledge_producer import Paper
 from knowledge_producer.time_utils import PACIFIC, today_pacific, to_pacific
 
-ARXIV_CATEGORIES = ["cs.AI", "cs.LG", "cs.CL", "cs.CV", "cs.SE", "cs.MA"]
+ARXIV_CATEGORIES = [
+    # Core AI & ML
+    "cs.AI",   # Artificial Intelligence
+    "cs.LG",   # Machine Learning (this IS "Computer Science > Machine Learning")
+    "cs.CL",   # Computation and Language (NLP, LLMs, transformers)
+    "cs.CV",   # Computer Vision and Pattern Recognition
+    "cs.NE",   # Neural and Evolutionary Computing (architectures, training methods)
+    # Robotics & Multi-agent
+    "cs.RO",   # Robotics (embodied AI, manipulation, navigation)
+    "cs.MA",   # Multi-Agent Systems (multi-agent, cooperative AI)
+    # Software & Systems
+    "cs.SE",   # Software Engineering (code generation, agentic coding)
+    "cs.DC",   # Distributed Computing (distributed training, parallel systems)
+    "cs.PF",   # Performance (GPU optimization, inference efficiency)
+    # Safety & Information
+    "cs.CR",   # Cryptography and Security (adversarial ML, AI safety)
+    "cs.IR",   # Information Retrieval (RAG, search, recommendation)
+    # Cross-disciplinary
+    "stat.ML", # Machine Learning (statistics perspective, theory)
+    "eess.AS", # Audio and Speech Processing (ASR, TTS, voice)
+]
 
 
 def _build_query(categories: list[str]) -> str:
