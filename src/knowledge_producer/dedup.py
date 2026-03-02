@@ -45,6 +45,7 @@ def extract_seen_from_report(filepath: str) -> set[str]:
 def load_seen_papers(
     report_dir: str = "reports",
     report_files: list[str] | None = None,
+    exclude_files: list[str] | None = None,
 ) -> set[str]:
     """Load all seen paper identifiers from previous reports.
 
@@ -52,11 +53,16 @@ def load_seen_papers(
         report_dir: Directory containing report markdown files.
         report_files: Specific report files to scan. If None, scans all
                       *.md files in report_dir.
+        exclude_files: Specific report files to skip while scanning.
 
     Returns:
         Set of URLs and normalized titles from previous reports.
     """
     seen: set[str] = set()
+    excluded_paths = {
+        os.path.abspath(path if os.path.isabs(path) else os.path.join(report_dir, path))
+        for path in (exclude_files or [])
+    }
 
     if report_files is not None:
         paths = report_files
@@ -64,8 +70,11 @@ def load_seen_papers(
         paths = sorted(glob(os.path.join(report_dir, "*.md")))
 
     for path in paths:
-        if os.path.isfile(path):
-            file_seen = extract_seen_from_report(path)
+        abs_path = os.path.abspath(path if os.path.isabs(path) else os.path.join(report_dir, path))
+        if abs_path in excluded_paths:
+            continue
+        if os.path.isfile(abs_path):
+            file_seen = extract_seen_from_report(abs_path)
             seen.update(file_seen)
 
     return seen

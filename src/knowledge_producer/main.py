@@ -4,14 +4,15 @@ import argparse
 import io
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import date
 
 from knowledge_producer.categorizer import categorize_papers
 from knowledge_producer.dedup import dedup_papers, load_seen_papers
 from knowledge_producer.focus import DEFAULT_FOCUS_TOPICS, match_focus
 from knowledge_producer.llm_summarizer import enrich_focus_papers
-from knowledge_producer.reporter import generate_report, save_report
+from knowledge_producer.reporter import generate_report, save_html_report, save_report
 from knowledge_producer.sources import available_sources, fetch_all_sources
+from knowledge_producer.time_utils import now_pacific, today_pacific
 
 _DEFAULT_FOCUS_STR = ",".join(DEFAULT_FOCUS_TOPICS)
 
@@ -36,7 +37,7 @@ class _TeeWriter(io.TextIOBase):
 def _setup_logging(report_date: str, days: int, log_dir: str = "logs") -> io.TextIOBase | None:
     """Set up tee logging to a file. Returns the log file handle (to close later)."""
     os.makedirs(log_dir, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%H%M%S")
+    timestamp = now_pacific().strftime("%H%M%S")
     filename = f"{report_date}-{days}d-{timestamp}.log"
     filepath = os.path.join(log_dir, filename)
     log_file = open(filepath, "w", encoding="utf-8")
@@ -102,7 +103,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--date",
         type=str,
         default=None,
-        help="Reference date in YYYY-MM-DD format (default: today UTC). "
+        help="Reference date in YYYY-MM-DD format (default: today Pacific Time). "
              "e.g. --date 2026-02-28 --days 1 fetches papers from Feb 27-28.",
     )
     parser.add_argument(
@@ -112,7 +113,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         const="all",
         default=None,
         help="Deduplicate against previous reports. "
-             "Use --dedup (or --dedup all) to scan all reports in output dir, "
+             "Use --dedup (or --dedup all) to scan all reports in output dir except the current target report, "
              "or --dedup file1.md,file2.md for specific files.",
     )
     return parser.parse_args(argv)
@@ -133,7 +134,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
 
     # Set up log file
-    report_date_str = (ref_date or datetime.now(timezone.utc).date()).isoformat()
+    report_date_str = (ref_date or today_pacific()).isoformat()
     log_file = _setup_logging(report_date_str, args.days)
 
     focus_topics: list[str] = []
@@ -158,11 +159,14 @@ def main(argv: list[str] | None = None) -> None:
 
     # Dedup against previous reports
     if args.dedup:
+        current_report_name = f"report-{report_date_str}-{args.days}d.md"
         if args.dedup == "all":
             report_files = None  # scan all in output dir
+            exclude_files = [current_report_name]
         else:
             report_files = [f.strip() for f in args.dedup.split(",")]
-        seen = load_seen_papers(report_dir=args.output, report_files=report_files)
+            exclude_files = None
+        seen = load_seen_papers(report_dir=args.output, report_files=report_files, exclude_files=exclude_files)
         papers, num_removed = dedup_papers(papers, seen)
         print(f"Dedup: removed {num_removed} papers seen in previous reports, {len(papers)} remaining.")
 
@@ -186,7 +190,7 @@ def main(argv: list[str] | None = None) -> None:
     tagged = sum(1 for p in papers if p.tags)
     print(f"Categorized {tagged} items ({len(papers) - tagged} uncategorized).")
 
-    report_date = (ref_date or datetime.now(timezone.utc).date()).isoformat()
+    report_date = (ref_date or today_pacific()).isoformat()
 
     # Build generation metadata for the report header
     gen_info = {
@@ -208,11 +212,13 @@ def main(argv: list[str] | None = None) -> None:
 
     try:
         filepath = save_report(content, args.output, report_date=report_date, days=args.days)
+        html_filepath = save_html_report(content, args.output, report_date=report_date, days=args.days)
     except OSError as e:
         print(f"Error writing report: {e}", file=sys.stderr)
         sys.exit(1)
 
     print(f"Report saved to {filepath}")
+    print(f"HTML report saved to {html_filepath}")
 
     # Close log
     if log_file:

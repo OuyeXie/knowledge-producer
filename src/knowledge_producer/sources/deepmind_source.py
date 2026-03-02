@@ -6,6 +6,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from knowledge_producer import Paper
+from knowledge_producer.time_utils import now_pacific, today_pacific, to_pacific
 
 DEEPMIND_URL = "https://deepmind.google/research/publications/"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
@@ -13,7 +14,7 @@ USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36
 
 def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -> list[Paper]:
     """Fetch recent publications from Google DeepMind."""
-    today = ref_date or datetime.now(timezone.utc).date()
+    today = ref_date or today_pacific()
     cutoff_date = today - timedelta(days=days)
 
     headers = {"User-Agent": USER_AGENT}
@@ -41,9 +42,9 @@ def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -
         abstract = desc_el.get_text(strip=True) if desc_el else ""
 
         date_el = card.select_one("time") or card.select_one("[class*='date']")
-        published = _parse_date_text(date_el.get_text(strip=True)) if date_el else datetime.now(timezone.utc)
+        published = _parse_date_text(date_el.get_text(strip=True)) if date_el else now_pacific()
 
-        if published.date() < cutoff_date:
+        if to_pacific(published).date() < cutoff_date:
             continue
 
         papers.append(
@@ -70,4 +71,4 @@ def _parse_date_text(text: str) -> datetime:
             return datetime.strptime(text.strip(), fmt).replace(tzinfo=timezone.utc)
         except ValueError:
             continue
-    return datetime.now(timezone.utc)
+    return now_pacific()

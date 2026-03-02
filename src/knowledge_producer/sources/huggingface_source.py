@@ -5,13 +5,14 @@ from datetime import date, datetime, timedelta, timezone
 import requests
 
 from knowledge_producer import Paper
+from knowledge_producer.time_utils import now_pacific, today_pacific, to_pacific
 
 HF_DAILY_PAPERS_URL = "https://huggingface.co/api/daily_papers"
 
 
 def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -> list[Paper]:
     """Fetch recent papers from HuggingFace Daily Papers API."""
-    today = ref_date or datetime.now(timezone.utc).date()
+    today = ref_date or today_pacific()
     cutoff_date = today - timedelta(days=days)
 
     resp = requests.get(HF_DAILY_PAPERS_URL, timeout=30)
@@ -29,9 +30,9 @@ def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -
         if published_str:
             published = datetime.fromisoformat(published_str.replace("Z", "+00:00"))
         else:
-            published = datetime.now(timezone.utc)
+            published = now_pacific()
 
-        if published.date() < cutoff_date:
+        if to_pacific(published).date() < cutoff_date:
             continue
 
         # title/summary available at both top level and in paper

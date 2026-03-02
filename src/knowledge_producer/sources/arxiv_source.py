@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 import arxiv
 
 from knowledge_producer import Paper
+from knowledge_producer.time_utils import PACIFIC, today_pacific, to_pacific
 
 ARXIV_CATEGORIES = ["cs.AI", "cs.LG", "cs.CL", "cs.CV", "cs.SE", "cs.MA"]
 
@@ -15,9 +16,9 @@ def _build_query(categories: list[str]) -> str:
 
 def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -> list[Paper]:
     """Fetch recent AI research papers from arXiv."""
-    today = ref_date or datetime.now(timezone.utc).date()
+    today = ref_date or today_pacific()
     cutoff_date = today - timedelta(days=days)
-    cutoff = datetime(cutoff_date.year, cutoff_date.month, cutoff_date.day, tzinfo=timezone.utc)
+    cutoff = datetime(cutoff_date.year, cutoff_date.month, cutoff_date.day, tzinfo=PACIFIC)
 
     query = _build_query(ARXIV_CATEGORIES)
 
@@ -33,7 +34,7 @@ def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -
     seen: set[str] = set()
 
     for result in client.results(search):
-        if result.published.replace(tzinfo=timezone.utc) < cutoff:
+        if to_pacific(result.published) < cutoff:
             break
 
         entry_id = result.entry_id

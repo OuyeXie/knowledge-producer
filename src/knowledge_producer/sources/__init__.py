@@ -77,7 +77,7 @@ def fetch_all_sources(
     Results are deduplicated across sources by title.
 
     Args:
-        ref_date: Reference date to fetch from (default: today UTC).
+        ref_date: Reference date to fetch from (default: today Pacific Time).
                   e.g. ref_date=2026-02-28 with days=1 fetches Feb 27-28.
     """
     _register_sources()

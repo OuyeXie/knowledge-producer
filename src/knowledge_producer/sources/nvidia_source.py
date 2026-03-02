@@ -7,6 +7,7 @@ from time import mktime
 import feedparser
 
 from knowledge_producer import Paper
+from knowledge_producer.time_utils import today_pacific, to_pacific
 
 NVIDIA_BLOG_FEED = "https://developer.nvidia.com/blog/feed/"
 
@@ -39,7 +40,7 @@ def _parse_date(entry: dict) -> datetime | None:
 
 def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -> list[Paper]:
     """Fetch recent AI-related posts from NVIDIA Developer Blog RSS."""
-    today = ref_date or datetime.now(timezone.utc).date()
+    today = ref_date or today_pacific()
     cutoff_date = today - timedelta(days=days)
 
     feed = feedparser.parse(NVIDIA_BLOG_FEED)
@@ -48,7 +49,7 @@ def fetch(days: int = 1, max_results: int = 500, ref_date: date | None = None) -
 
     for entry in feed.entries:
         published = _parse_date(entry)
-        if not published or published.date() < cutoff_date:
+        if not published or to_pacific(published).date() < cutoff_date:
             continue
 
         title = entry.get("title", "").strip()

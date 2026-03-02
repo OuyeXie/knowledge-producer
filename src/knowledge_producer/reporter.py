@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import html
 import os
+import re
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 
 from knowledge_producer import Paper
+from knowledge_producer.time_utils import now_pacific, to_pacific
 
 CATEGORY_ORDER = [
     # LLM Core
@@ -34,13 +37,14 @@ def _format_authors(authors: list[str], max_authors: int = 5) -> str:
 def _paper_section(paper: Paper) -> str:
     authors_str = _format_authors(paper.authors)
     tags_str = ", ".join(paper.tags) if paper.tags else "Uncategorized"
+    published_str = to_pacific(paper.published).strftime("%Y-%m-%d")
     lines = [
         f"### {paper.title}",
         f"- **Source**: {paper.source}",
         f"- **Link**: {paper.url}",
         f"- **Tags**: {tags_str}",
         f"- **Authors**: {authors_str}",
-        f"- **Published**: {paper.published.strftime('%Y-%m-%d')}",
+        f"- **Published**: {published_str}",
         f"- **Abstract**: {paper.abstract}" if paper.abstract else "",
         "",
         "---",
@@ -53,6 +57,7 @@ def _paper_section_with_summary(paper: Paper, relevance_summary: str) -> str:
     """Format a focus paper section with an LLM-generated relevance summary."""
     authors_str = _format_authors(paper.authors)
     tags_str = ", ".join(paper.tags) if paper.tags else "Uncategorized"
+    published_str = to_pacific(paper.published).strftime("%Y-%m-%d")
     lines = [f"### {paper.title}"]
     if relevance_summary:
         lines.append(f"> **Why it matters** *(AI-generated)*: {relevance_summary}")
@@ -62,7 +67,7 @@ def _paper_section_with_summary(paper: Paper, relevance_summary: str) -> str:
         f"- **Link**: {paper.url}",
         f"- **Tags**: {tags_str}",
         f"- **Authors**: {authors_str}",
-        f"- **Published**: {paper.published.strftime('%Y-%m-%d')}",
+        f"- **Published**: {published_str}",
     ])
     if paper.abstract:
         lines.append(f"- **Abstract**: {paper.abstract}")
@@ -86,7 +91,7 @@ def generate_report(
 
     # Generation info
     if generation_info:
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        now = now_pacific().strftime("%Y-%m-%d %H:%M:%S %Z")
         parts = [f"`days={generation_info['days']}`"]
         parts.append(f"`sources={generation_info['sources']}`")
         parts.append(f"`max_results={generation_info['max_results']}`")
@@ -189,6 +194,234 @@ def generate_report(
     return "\n".join(lines)
 
 
+def _slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    return slug or "section"
+
+
+def _render_inline(text: str) -> str:
+    placeholders: dict[str, str] = {}
+
+    def _store(value: str) -> str:
+        key = f"__HTML_PLACEHOLDER_{len(placeholders)}__"
+        placeholders[key] = value
+        return key
+
+    escaped = html.escape(text, quote=False)
+    escaped = re.sub(r"`([^`]+)`", lambda m: _store(f"<code>{m.group(1)}</code>"), escaped)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", lambda m: _store(f"<strong>{m.group(1)}</strong>"), escaped)
+    escaped = re.sub(r"\*([^*]+)\*", lambda m: _store(f"<em>{m.group(1)}</em>"), escaped)
+    escaped = re.sub(
+        r"(?<![\"'=])(https?://[^\s<]+)",
+        lambda m: _store(
+            f'<a href="{m.group(1)}" target="_blank" rel="noopener noreferrer">{m.group(1)}</a>'
+        ),
+        escaped,
+    )
+    for key, value in placeholders.items():
+        escaped = escaped.replace(key, value)
+    return escaped
+
+
+def _markdown_to_html(markdown: str) -> str:
+    lines = markdown.splitlines()
+    html_parts: list[str] = []
+    paragraph: list[str] = []
+    list_items: list[str] = []
+    quote_lines: list[str] = []
+
+    def flush_paragraph() -> None:
+        if paragraph:
+            html_parts.append(f"<p>{'<br>'.join(_render_inline(line) for line in paragraph)}</p>")
+            paragraph.clear()
+
+    def flush_list() -> None:
+        if list_items:
+            items = "".join(f"<li>{_render_inline(item)}</li>" for item in list_items)
+            html_parts.append(f"<ul>{items}</ul>")
+            list_items.clear()
+
+    def flush_quote() -> None:
+        if quote_lines:
+            html_parts.append(f"<blockquote>{'<br>'.join(_render_inline(line) for line in quote_lines)}</blockquote>")
+            quote_lines.clear()
+
+    def flush_all() -> None:
+        flush_paragraph()
+        flush_list()
+        flush_quote()
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            flush_all()
+            continue
+        if stripped == "---":
+            flush_all()
+            html_parts.append("<hr>")
+            continue
+        if line.startswith("> "):
+            flush_paragraph()
+            flush_list()
+            quote_lines.append(line[2:].strip())
+            continue
+        if line.startswith("- "):
+            flush_paragraph()
+            flush_quote()
+            list_items.append(line[2:].strip())
+            continue
+        if line.startswith("### "):
+            flush_all()
+            title = line[4:].strip()
+            html_parts.append(f'<h3 id="{_slugify(title)}">{_render_inline(title)}</h3>')
+            continue
+        if line.startswith("## "):
+            flush_all()
+            title = line[3:].strip()
+            html_parts.append(f'<h2 id="{_slugify(title)}">{_render_inline(title)}</h2>')
+            continue
+        if line.startswith("# "):
+            flush_all()
+            title = line[2:].strip()
+            html_parts.append(f'<h1 id="{_slugify(title)}">{_render_inline(title)}</h1>')
+            continue
+        paragraph.append(stripped)
+
+    flush_all()
+    return "\n".join(html_parts)
+
+
+def generate_html_report(markdown_content: str, report_date: str) -> str:
+    """Render the Markdown report as a standalone HTML document."""
+    body_html = _markdown_to_html(markdown_content)
+    title = f"AI Research Daily Report - {report_date}"
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html.escape(title)}</title>
+  <style>
+    :root {{
+      --bg: #f4efe6;
+      --paper: #fffdf8;
+      --ink: #1f2520;
+      --muted: #5f6b63;
+      --line: #d8d1c3;
+      --accent: #145c4a;
+      --accent-soft: #e0f0e9;
+      --quote: #f7f1de;
+      --shadow: 0 18px 45px rgba(54, 44, 24, 0.10);
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(20, 92, 74, 0.08), transparent 28%),
+        linear-gradient(180deg, #f7f2e8 0%, var(--bg) 100%);
+      line-height: 1.65;
+    }}
+    .page {{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }}
+    .report {{
+      background: var(--paper);
+      border: 1px solid rgba(216, 209, 195, 0.85);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }}
+    .report-body {{
+      padding: 28px 28px 36px;
+    }}
+    h1, h2, h3 {{
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1.2;
+      margin: 0;
+    }}
+    h1 {{
+      padding: 28px 28px 24px;
+      background: linear-gradient(135deg, #183c34 0%, #145c4a 100%);
+      color: #f8f4ec;
+      font-size: clamp(2rem, 5vw, 3rem);
+    }}
+    h2 {{
+      margin-top: 32px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      font-size: 1.45rem;
+      color: #17362d;
+    }}
+    h3 {{
+      margin-top: 24px;
+      font-size: 1.12rem;
+      color: #102922;
+    }}
+    p, ul, blockquote {{
+      margin: 14px 0;
+    }}
+    ul {{
+      padding-left: 1.25rem;
+    }}
+    li {{
+      margin: 0.35rem 0;
+    }}
+    blockquote {{
+      margin: 18px 0;
+      padding: 14px 16px;
+      background: var(--quote);
+      border-left: 4px solid #d2a33f;
+      border-radius: 0 14px 14px 0;
+      color: #564521;
+    }}
+    hr {{
+      border: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--line), transparent);
+      margin: 22px 0;
+    }}
+    a {{
+      color: var(--accent);
+      text-decoration-thickness: 1.5px;
+      text-underline-offset: 2px;
+    }}
+    code {{
+      font-family: "SFMono-Regular", Menlo, monospace;
+      background: var(--accent-soft);
+      border-radius: 6px;
+      padding: 0.1rem 0.35rem;
+      font-size: 0.92em;
+    }}
+    @media (max-width: 720px) {{
+      .page {{
+        padding: 16px 10px 36px;
+      }}
+      .report-body {{
+        padding: 20px 18px 28px;
+      }}
+      h1 {{
+        padding: 22px 18px 18px;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <article class="report">
+      <div class="report-body">
+{body_html}
+      </div>
+    </article>
+  </main>
+</body>
+</html>
+"""
+
+
 def save_report(
     content: str,
     output_dir: str = "reports",
@@ -197,9 +430,26 @@ def save_report(
 ) -> str:
     """Write the report to a file and return the file path."""
     os.makedirs(output_dir, exist_ok=True)
-    date_str = report_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_str = report_date or now_pacific().strftime("%Y-%m-%d")
     filename = f"report-{date_str}-{days}d.md"
     filepath = os.path.join(output_dir, filename)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
+    return os.path.abspath(filepath)
+
+
+def save_html_report(
+    markdown_content: str,
+    output_dir: str = "reports",
+    report_date: str | None = None,
+    days: int = 1,
+) -> str:
+    """Write an HTML version of the report to a sibling file and return the file path."""
+    os.makedirs(output_dir, exist_ok=True)
+    date_str = report_date or now_pacific().strftime("%Y-%m-%d")
+    filename = f"report-{date_str}-{days}d.html"
+    filepath = os.path.join(output_dir, filename)
+    html_content = generate_html_report(markdown_content, date_str)
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(html_content)
     return os.path.abspath(filepath)

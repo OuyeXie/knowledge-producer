@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 
 from knowledge_producer import Paper
+from knowledge_producer.time_utils import today_pacific
 
 SEARCH_QUERIES = [
     "#AIResearch",
@@ -33,7 +34,7 @@ def fetch(days: int = 1, max_results: int = 100, ref_date: date | None = None) -
         print("    [twitter] snscrape failed to load (may be broken with current X changes)")
         return []
 
-    today = ref_date or datetime.now(timezone.utc).date()
+    today = ref_date or today_pacific()
     cutoff_date = today - timedelta(days=days)
     since_str = cutoff_date.strftime("%Y-%m-%d")
 

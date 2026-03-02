@@ -13,6 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from knowledge_producer import Paper
+from knowledge_producer.time_utils import now_pacific, today_pacific
 
 REDNOTE_SEARCH_URL = "https://www.xiaohongshu.com/search_result"
 USER_AGENT = (
@@ -29,7 +30,7 @@ def fetch(days: int = 1, max_results: int = 100, ref_date: date | None = None) -
     This is experimental and will likely fail without proper authentication.
     Failures are caught gracefully by the source registry.
     """
-    today = ref_date or datetime.now(timezone.utc).date()
+    today = ref_date or today_pacific()
     cutoff_date = today - timedelta(days=days)
 
     headers = {
@@ -78,7 +79,7 @@ def fetch(days: int = 1, max_results: int = 100, ref_date: date | None = None) -
                         authors=[],
                         url=link,
                         source="rednote",
-                        published=datetime.now(timezone.utc),
+                        published=now_pacific(),
                     )
                 )
 

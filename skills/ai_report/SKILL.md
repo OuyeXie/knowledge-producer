@@ -11,7 +11,7 @@ Generate and send an AI research report from the `knowledge-producer` repo.
 ## Safety + boundaries
 - Never request or use Ouye’s passwords.
 - Do not print or exfiltrate secrets from `.env`.
-- Stage and commit only the generated report and matching log for this run.
+- Stage and commit only the generated Markdown report, HTML report, and matching log for this run.
 
 ## Default behavior
 - Repo: `/Users/ouye/workspace/knowledge-producer`
@@ -19,8 +19,8 @@ Generate and send an AI research report from the `knowledge-producer` repo.
 - Sources: all
 - LLM summaries: enabled via OpenAI (`--llm-provider openai`)
 - Dedup: enabled against existing reports (`--dedup all`)
-- Output: `reports/report-{date}-{days}d.md`
-- Git: commit the new report and log, then push to `origin/main`
+- Output: `reports/report-{date}-{days}d.md` and `reports/report-{date}-{days}d.html`
+- Git: commit the new Markdown report, HTML report, and log, then push to `origin/main`
 
 ## What to do
 
@@ -31,22 +31,22 @@ Generate and send an AI research report from the `knowledge-producer` repo.
 - `python -m pip install -e .`
 - `python -m knowledge_producer --days 1 --dedup all --llm-provider openai`
 
-2) Find the newest report under:
+2) Find the newest Markdown and HTML reports under:
 - `/Users/ouye/workspace/knowledge-producer/reports/`
 
 3) Find the matching newest log under:
 - `/Users/ouye/workspace/knowledge-producer/logs/`
 
-4) Commit and push only the generated report and log:
+4) Commit and push only the generated Markdown report, HTML report, and log:
 
-- `git add reports/<new-report>.md logs/<new-log>.log`
+- `git add reports/<new-report>.md reports/<new-report>.html logs/<new-log>.log`
 - `git commit -m "Add AI research report for <date>"`
 - `git push origin main`
 
-5) Copy the report into the OpenClaw workspace so attachments are allowed:
+5) Copy the HTML report into the OpenClaw workspace so attachments are allowed:
 - copy to: `/Users/ouye/.openclaw/workspace/`
 
-6) Send it back to the user as a file attachment in Discord.
+6) Send the HTML report back to the user as a file attachment in Discord.
 
 ## Options (if user provides)
 - If user asks for a different range: pass `--days N` or `--date YYYY-MM-DD`.
