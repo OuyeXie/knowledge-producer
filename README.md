@@ -109,7 +109,9 @@ pip install snscrape
 To expose this repo's `ai-report` skill to OpenClaw, create a symlink into the OpenClaw workspace skills directory:
 
 ```bash
-ln -s /Users/ouye/workspace/knowledge-producer/skills/ai_report /Users/ouye/.openclaw/workspace/skills/ai_report
+cp -r /Users/ouye/workspace/knowledge-producer/skills/ai_report /Users/ouye/.openclaw/workspace/skills/ai_report
+or
+cp -r /Users/ouye/workspace/knowledge-producer/skills/ai_report /Users/ouye/.openclaw/skills/ai_report
 ```
 
 ## Usage
